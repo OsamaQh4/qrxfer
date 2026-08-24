@@ -136,30 +136,30 @@ export default function ReceivePage() {
         </div>
       )}
 
-      {scanning && (
-        <div className="card">
-          <div className="video-frame">
-            <video ref={videoRef} muted playsInline />
-          </div>
-
-          {header && (
-            <div style={{ margin: '1rem 0' }}>
-              <div style={{ fontSize: '1.4rem', letterSpacing: '0.2em' }}>
-                {toHex(header.hash).slice(0, 6).toUpperCase()}
-              </div>
-              <div style={{ color: 'var(--text-dim)' }}>
-                {header.fileName} — {(header.fileLength / 1024).toFixed(1)} KB, {header.k} blocks
-              </div>
-            </div>
-          )}
-
-          {stats && <BenchmarkOverlay stats={stats} />}
-
-          <button type="button" className="secondary" onClick={stop}>
-            Stop
-          </button>
+      {/* Always mounted (just hidden) so videoRef is attached before start() ever runs —
+          it needs the element to exist before the camera stream can be wired up. */}
+      <div className="card" style={{ display: scanning ? 'block' : 'none' }}>
+        <div className="video-frame">
+          <video ref={videoRef} muted playsInline autoPlay />
         </div>
-      )}
+
+        {header && (
+          <div style={{ margin: '1rem 0' }}>
+            <div style={{ fontSize: '1.4rem', letterSpacing: '0.2em' }}>
+              {toHex(header.hash).slice(0, 6).toUpperCase()}
+            </div>
+            <div style={{ color: 'var(--text-dim)' }}>
+              {header.fileName} — {(header.fileLength / 1024).toFixed(1)} KB, {header.k} blocks
+            </div>
+          </div>
+        )}
+
+        {stats && <BenchmarkOverlay stats={stats} />}
+
+        <button type="button" className="secondary" onClick={stop}>
+          Stop
+        </button>
+      </div>
 
       {result && header && (
         <div className="card">

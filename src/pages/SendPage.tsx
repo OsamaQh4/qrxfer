@@ -91,9 +91,66 @@ export default function SendPage() {
     }
   }
 
-  if (streaming) {
-    return (
-      <div className="stream-overlay">
+  return (
+    <div>
+      {!streaming && (
+        <>
+          <h1>Send</h1>
+          <div className="card">
+            <div className="field">
+              <label htmlFor="file">File</label>
+              <input
+                id="file"
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+
+            <div className="field-row" style={{ marginTop: '1rem' }}>
+              <div className="field">
+                <label htmlFor="fps">Frame rate (fps)</label>
+                <input
+                  id="fps"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={fps}
+                  onChange={(e) => setFps(Number(e.target.value))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="ecc">QR error correction</label>
+                <select id="ecc" value={eccLevel} onChange={(e) => setEccLevel(e.target.value as EccLevel)}>
+                  <option value="L">L — low (max density)</option>
+                  <option value="M">M — medium</option>
+                  <option value="Q">Q — quartile</option>
+                  <option value="H">H — high (max robustness)</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="blockSize">Block size (bytes)</label>
+                <input
+                  id="blockSize"
+                  type="number"
+                  min={32}
+                  max={2000}
+                  step={16}
+                  value={blockSize}
+                  onChange={(e) => setBlockSize(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <button type="button" disabled={!file} onClick={() => void start()}>
+              Start streaming
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Always mounted (just hidden) so canvasRef is attached before start() ever runs —
+          the streaming loop needs the element to exist before it can render the first frame. */}
+      <div className="stream-overlay" style={{ display: streaming ? 'flex' : 'none' }}>
         <canvas ref={canvasRef} />
         <div className="hud">
           <div style={{ fontSize: '1.4rem', letterSpacing: '0.2em', marginBottom: '0.5rem' }}>
@@ -106,61 +163,6 @@ export default function SendPage() {
         {stats && <BenchmarkOverlay stats={stats} dark />}
         <button type="button" className="secondary" onClick={() => void stop()}>
           Stop streaming
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <h1>Send</h1>
-      <div className="card">
-        <div className="field">
-          <label htmlFor="file">File</label>
-          <input
-            id="file"
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </div>
-
-        <div className="field-row" style={{ marginTop: '1rem' }}>
-          <div className="field">
-            <label htmlFor="fps">Frame rate (fps)</label>
-            <input
-              id="fps"
-              type="number"
-              min={1}
-              max={30}
-              value={fps}
-              onChange={(e) => setFps(Number(e.target.value))}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="ecc">QR error correction</label>
-            <select id="ecc" value={eccLevel} onChange={(e) => setEccLevel(e.target.value as EccLevel)}>
-              <option value="L">L — low (max density)</option>
-              <option value="M">M — medium</option>
-              <option value="Q">Q — quartile</option>
-              <option value="H">H — high (max robustness)</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="blockSize">Block size (bytes)</label>
-            <input
-              id="blockSize"
-              type="number"
-              min={32}
-              max={2000}
-              step={16}
-              value={blockSize}
-              onChange={(e) => setBlockSize(Number(e.target.value))}
-            />
-          </div>
-        </div>
-
-        <button type="button" disabled={!file} onClick={() => void start()}>
-          Start streaming
         </button>
       </div>
     </div>
