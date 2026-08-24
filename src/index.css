@@ -1,0 +1,257 @@
+:root {
+  --text: #3f3d46;
+  --text-dim: #7a7885;
+  --text-h: #0d0c11;
+  --bg: #fdfdfd;
+  --bg-card: #ffffff;
+  --border: #e3e2e6;
+  --accent: #7c3aed;
+  --accent-bg: rgba(124, 58, 237, 0.1);
+  --ok: #16a34a;
+  --err: #dc2626;
+  --mono: ui-monospace, Consolas, 'SFMono-Regular', monospace;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font: 16px/1.5 var(--sans);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #c7c5cf;
+    --text-dim: #8b8996;
+    --text-h: #f5f4f7;
+    --bg: #111014;
+    --bg-card: #17161c;
+    --border: #2a2930;
+    --accent: #a78bfa;
+    --accent-bg: rgba(167, 139, 250, 0.15);
+    --ok: #4ade80;
+    --err: #f87171;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1, h2, h3 {
+  color: var(--text-h);
+  font-weight: 600;
+  margin: 0 0 0.4em;
+}
+
+a {
+  color: var(--accent);
+}
+
+code {
+  font-family: var(--mono);
+}
+
+button, select, input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6em 1.2em;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+input[type='number'], input[type='text'], select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4em 0.6em;
+}
+
+.app-shell {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  min-height: 100svh;
+}
+
+nav.top {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+nav.top .brand {
+  font-weight: 700;
+  color: var(--text-h);
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+
+nav.top a {
+  text-decoration: none;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+nav.top a.active {
+  color: var(--text-h);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.stat {
+  background: var(--accent-bg);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.stat .value {
+  font-family: var(--mono);
+  font-size: 1.2rem;
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.stat .label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ok { color: var(--ok); }
+.err { color: var(--err); }
+
+.stream-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  z-index: 50;
+}
+
+.stream-overlay canvas {
+  max-width: min(90vw, 480px);
+  max-height: 60vh;
+  image-rendering: pixelated;
+  background: white;
+  border-radius: 8px;
+}
+
+.stream-overlay .hud {
+  color: #eee;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.video-frame {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4 / 3;
+  max-width: 480px;
+}
+
+.video-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progress-bar > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+table.history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+table.history th, table.history td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+table.history th {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.chart-box {
+  width: 100%;
+  height: 160px;
+}
