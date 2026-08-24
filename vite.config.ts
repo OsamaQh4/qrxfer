@@ -4,7 +4,9 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // served from https://<user>.github.io/qrxfer/ in production; keep local dev at the root
+  base: command === 'build' ? '/qrxfer/' : '/',
   plugins: [
     react(),
     VitePWA({
@@ -29,4 +31,4 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
   },
-})
+}))
