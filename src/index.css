@@ -184,14 +184,21 @@ nav.top a.active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* content (QR + stats + chart) can be taller than the viewport, especially on
+     phones; centering an overflowing flex column clips both ends with no way to
+     reach them, so start from the top and let it scroll instead */
+  justify-content: flex-start;
+  overflow-y: auto;
   gap: 1rem;
+  padding: 1.5rem 1rem;
   z-index: 50;
 }
 
 .stream-overlay canvas {
-  max-width: min(90vw, 480px);
-  max-height: 60vh;
+  width: min(90vw, 420px);
+  height: auto;
+  max-height: 50vh;
+  flex-shrink: 0;
   image-rendering: pixelated;
   background: white;
   border-radius: 8px;
