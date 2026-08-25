@@ -6,6 +6,7 @@ import { headerSize, unpackFrame, type FrameHeader } from '../lib/protocol/frame
 import { toHex } from '../lib/protocol/hash'
 import { ReceiveSession } from '../lib/protocol/transfer'
 import { startCameraScanner, type ScannerHandle } from '../lib/qr/decode'
+import { acquireWakeLock, type WakeLockHandle } from '../lib/util/wakeLock'
 
 export default function ReceivePage() {
   const [scanning, setScanning] = useState(false)
@@ -20,8 +21,15 @@ export default function ReceivePage() {
   const recorderRef = useRef<BenchmarkRecorder | null>(null)
   const historyRef = useRef<{ t: number; kbps: number }[]>([])
   const doneRef = useRef(false)
+  const wakeLockRef = useRef<WakeLockHandle | null>(null)
 
-  useEffect(() => () => scannerRef.current?.stop(), [])
+  useEffect(
+    () => () => {
+      scannerRef.current?.stop()
+      wakeLockRef.current?.release()
+    },
+    [],
+  )
 
   async function start() {
     setError(null)
@@ -41,6 +49,9 @@ export default function ReceivePage() {
       // artificial bottleneck ahead of that real hardware limit.
       const handle = await startCameraScanner(videoRef.current, 60, onFrameBytes)
       scannerRef.current = handle
+      // a multi-minute scan with no touch input is exactly when a phone dims/locks,
+      // which would silently stall the camera feed mid-transfer
+      wakeLockRef.current = await acquireWakeLock()
       setScanning(true)
     } catch {
       setError('Could not access the camera. Check permissions and try again.')
@@ -50,6 +61,8 @@ export default function ReceivePage() {
   function stop() {
     scannerRef.current?.stop()
     scannerRef.current = null
+    wakeLockRef.current?.release()
+    wakeLockRef.current = null
     setScanning(false)
   }
 

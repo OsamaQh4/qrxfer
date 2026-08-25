@@ -7,6 +7,7 @@ import { toHex } from '../lib/protocol/hash'
 import { prepareTransfer, type SenderTransfer } from '../lib/protocol/transfer'
 import { renderQrToCanvas, type EccLevel } from '../lib/qr/encode'
 import { sleep } from '../lib/util/sleep'
+import { acquireWakeLock, type WakeLockHandle } from '../lib/util/wakeLock'
 
 export default function SendPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -22,8 +23,15 @@ export default function SendPage() {
   const transferRef = useRef<SenderTransfer | null>(null)
   const recorderRef = useRef<BenchmarkRecorder | null>(null)
   const historyRef = useRef<{ t: number; kbps: number }[]>([])
+  const wakeLockRef = useRef<WakeLockHandle | null>(null)
 
-  useEffect(() => () => void (stopRef.current = true), [])
+  useEffect(
+    () => () => {
+      stopRef.current = true
+      wakeLockRef.current?.release()
+    },
+    [],
+  )
 
   async function start() {
     if (!file) return
@@ -35,6 +43,7 @@ export default function SendPage() {
     setMatchCode(toHex(transfer.header.hash).slice(0, 6).toUpperCase())
     stopRef.current = false
     setStreaming(true)
+    wakeLockRef.current = await acquireWakeLock()
     void loop(transfer)
   }
 
@@ -76,6 +85,8 @@ export default function SendPage() {
   async function stop() {
     stopRef.current = true
     setStreaming(false)
+    wakeLockRef.current?.release()
+    wakeLockRef.current = null
     const transfer = transferRef.current
     const recorder = recorderRef.current
     if (transfer && recorder && file && recorder.frameCount > 0) {
