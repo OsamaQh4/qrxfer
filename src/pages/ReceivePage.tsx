@@ -34,7 +34,12 @@ export default function ReceivePage() {
 
     if (!videoRef.current) return
     try {
-      const handle = await startCameraScanner(videoRef.current, 20, onFrameBytes)
+      // 60 is just an upper bound the scan loop is allowed to attempt — it never
+      // overlaps decode attempts (see the `!scanning` guard in decode.ts), so the
+      // *actual* rate always self-limits to however fast drawImage + WASM decode
+      // really runs on this device; raising the cap just stops us from being the
+      // artificial bottleneck ahead of that real hardware limit.
+      const handle = await startCameraScanner(videoRef.current, 60, onFrameBytes)
       scannerRef.current = handle
       setScanning(true)
     } catch {
@@ -96,7 +101,7 @@ export default function ReceivePage() {
     const summary = recorder.summary({
       config: {
         role: 'receive',
-        fps: 20,
+        fps: 60, // ceiling only — recorder.avgThroughputBps reflects the actual achieved rate
         eccLevel: 'M',
         blockSize: session.header.blockSize,
         fileSize: session.header.fileLength,

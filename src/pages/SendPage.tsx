@@ -113,7 +113,7 @@ export default function SendPage() {
                   id="fps"
                   type="number"
                   min={1}
-                  max={30}
+                  max={60}
                   value={fps}
                   onChange={(e) => setFps(Number(e.target.value))}
                 />
