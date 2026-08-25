@@ -37,7 +37,11 @@ export async function startCameraScanner(
   onDecode: (bytes: Uint8Array) => void,
 ): Promise<ScannerHandle> {
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' },
+    // constrain resolution: an unconstrained rear camera often negotiates
+    // 1080p+, and every scan tick pays for that many pixels through
+    // drawImage + getImageData + WASM decode — that per-frame cost is what
+    // caps the achievable scan rate, well before targetFps is reached
+    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
     audio: false,
   })
   video.srcObject = stream
@@ -46,6 +50,10 @@ export async function startCameraScanner(
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) throw new Error('2D canvas context unavailable')
+
+  // belt-and-braces cap even if a browser ignores the `ideal` hint above
+  // (constraint support is inconsistent, especially on iOS Safari)
+  const MAX_SCAN_WIDTH = 1280
 
   let stopped = false
   let scanning = false
@@ -57,9 +65,10 @@ export async function startCameraScanner(
     if (video.videoWidth === 0 || video.videoHeight === 0) return
     scanning = true
     try {
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      ctx.drawImage(video, 0, 0)
+      const scale = Math.min(1, MAX_SCAN_WIDTH / video.videoWidth)
+      canvas.width = Math.round(video.videoWidth * scale)
+      canvas.height = Math.round(video.videoHeight * scale)
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const found = await decodeImageData(imageData)
       for (const bytes of found) onDecode(bytes)
