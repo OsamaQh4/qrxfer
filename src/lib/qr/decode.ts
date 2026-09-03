@@ -38,11 +38,19 @@ export interface ScannerHandle {
   cameraInfo: CameraInfo
 }
 
+export interface ScanTiming {
+  drawMs: number
+  readbackMs: number
+  decodeMs: number
+  totalMs: number
+}
+
 /** Opens the camera and repeatedly decodes frames at (up to) `targetFps`, calling `onDecode` for each QR found. */
 export async function startCameraScanner(
   video: HTMLVideoElement,
   targetFps: number,
   onDecode: (bytes: Uint8Array) => void,
+  onTiming?: (timing: ScanTiming) => void,
 ): Promise<ScannerHandle> {
   const stream = await navigator.mediaDevices.getUserMedia({
     // constrain resolution: an unconstrained rear camera often negotiates
@@ -86,14 +94,34 @@ export async function startCameraScanner(
   const scanOnce = async () => {
     if (video.videoWidth === 0 || video.videoHeight === 0) return
     scanning = true
+    const tStart = performance.now()
     try {
       const scale = Math.min(1, MAX_SCAN_WIDTH / video.videoWidth)
-      canvas.width = Math.round(video.videoWidth * scale)
-      canvas.height = Math.round(video.videoHeight * scale)
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const w = Math.round(video.videoWidth * scale)
+      const h = Math.round(video.videoHeight * scale)
+      // writing canvas.width/height always wipes+reallocates the backing bitmap,
+      // even when the value is unchanged — only pay that cost when the size moves
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w
+        canvas.height = h
+      }
+      ctx.drawImage(video, 0, 0, w, h)
+      const tDrawn = performance.now()
+
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const tRead = performance.now()
+
       const found = await decodeImageData(imageData)
+      const tDecoded = performance.now()
+
       for (const bytes of found) onDecode(bytes)
+
+      onTiming?.({
+        drawMs: tDrawn - tStart,
+        readbackMs: tRead - tDrawn,
+        decodeMs: tDecoded - tRead,
+        totalMs: tDecoded - tStart,
+      })
     } catch {
       // a single unreadable frame is expected and harmless; the next tick tries again
     } finally {

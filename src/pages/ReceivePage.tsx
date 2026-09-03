@@ -5,7 +5,7 @@ import { BenchmarkRecorder } from '../lib/benchmark/recorder'
 import { headerSize, unpackFrame, type FrameHeader } from '../lib/protocol/frame'
 import { toHex } from '../lib/protocol/hash'
 import { ReceiveSession } from '../lib/protocol/transfer'
-import { startCameraScanner, type CameraInfo, type ScannerHandle } from '../lib/qr/decode'
+import { startCameraScanner, type CameraInfo, type ScannerHandle, type ScanTiming } from '../lib/qr/decode'
 import { acquireWakeLock, type WakeLockHandle } from '../lib/util/wakeLock'
 
 export default function ReceivePage() {
@@ -15,6 +15,7 @@ export default function ReceivePage() {
   const [result, setResult] = useState<{ bytes: Uint8Array; hashOk: boolean } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null)
+  const [avgTiming, setAvgTiming] = useState<ScanTiming | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const scannerRef = useRef<ScannerHandle | null>(null)
@@ -23,6 +24,8 @@ export default function ReceivePage() {
   const historyRef = useRef<{ t: number; kbps: number }[]>([])
   const doneRef = useRef(false)
   const wakeLockRef = useRef<WakeLockHandle | null>(null)
+  const timingSamplesRef = useRef<ScanTiming[]>([])
+  const lastTimingUiUpdateRef = useRef(0)
 
   useEffect(
     () => () => {
@@ -37,10 +40,13 @@ export default function ReceivePage() {
     setResult(null)
     setHeader(null)
     setCameraInfo(null)
+    setAvgTiming(null)
     doneRef.current = false
     sessionRef.current = null
     recorderRef.current = null
     historyRef.current = []
+    timingSamplesRef.current = []
+    lastTimingUiUpdateRef.current = 0
 
     if (!videoRef.current) return
     try {
@@ -49,7 +55,7 @@ export default function ReceivePage() {
       // *actual* rate always self-limits to however fast drawImage + WASM decode
       // really runs on this device; raising the cap just stops us from being the
       // artificial bottleneck ahead of that real hardware limit.
-      const handle = await startCameraScanner(videoRef.current, 60, onFrameBytes)
+      const handle = await startCameraScanner(videoRef.current, 60, onFrameBytes, onScanTiming)
       scannerRef.current = handle
       setCameraInfo(handle.cameraInfo)
       // a multi-minute scan with no touch input is exactly when a phone dims/locks,
@@ -67,6 +73,23 @@ export default function ReceivePage() {
     wakeLockRef.current?.release()
     wakeLockRef.current = null
     setScanning(false)
+  }
+
+  function onScanTiming(timing: ScanTiming) {
+    const samples = [...timingSamplesRef.current.slice(-29), timing]
+    timingSamplesRef.current = samples
+
+    const now = performance.now()
+    if (now - lastTimingUiUpdateRef.current < 300) return
+    lastTimingUiUpdateRef.current = now
+
+    const avg = (key: keyof ScanTiming) => samples.reduce((s, t) => s + t[key], 0) / samples.length
+    setAvgTiming({
+      drawMs: avg('drawMs'),
+      readbackMs: avg('readbackMs'),
+      decodeMs: avg('decodeMs'),
+      totalMs: avg('totalMs'),
+    })
   }
 
   function onFrameBytes(bytes: Uint8Array) {
@@ -170,6 +193,14 @@ export default function ReceivePage() {
             {cameraInfo.settings.frameRate?.toFixed(0) ?? '?'} fps
             {cameraInfo.capabilities?.frameRate &&
               ` (device reports ${cameraInfo.capabilities.frameRate.min}–${cameraInfo.capabilities.frameRate.max} fps range)`}
+          </div>
+        )}
+
+        {avgTiming && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', margin: '0.5rem 0' }}>
+            Per attempt (avg): draw {avgTiming.drawMs.toFixed(1)}ms · readback {avgTiming.readbackMs.toFixed(1)}ms ·
+            decode {avgTiming.decodeMs.toFixed(1)}ms · total {avgTiming.totalMs.toFixed(1)}ms (
+            {(1000 / avgTiming.totalMs).toFixed(1)} fps ceiling)
           </div>
         )}
 
