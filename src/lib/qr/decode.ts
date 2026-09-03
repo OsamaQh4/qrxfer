@@ -26,8 +26,16 @@ export async function decodeImageData(imageData: ImageData): Promise<Uint8Array[
   return results.filter((r) => r.isValid).map((r) => r.bytes)
 }
 
+export interface CameraInfo {
+  /** what the browser actually negotiated right now */
+  settings: MediaTrackSettings
+  /** the min/max range this camera+browser combo claims to support, if exposed */
+  capabilities: MediaTrackCapabilities | null
+}
+
 export interface ScannerHandle {
   stop(): void
+  cameraInfo: CameraInfo
 }
 
 /** Opens the camera and repeatedly decodes frames at (up to) `targetFps`, calling `onDecode` for each QR found. */
@@ -40,12 +48,26 @@ export async function startCameraScanner(
     // constrain resolution: an unconstrained rear camera often negotiates
     // 1080p+, and every scan tick pays for that many pixels through
     // drawImage + getImageData + WASM decode — that per-frame cost is what
-    // caps the achievable scan rate, well before targetFps is reached
-    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+    // caps the achievable scan rate, well before targetFps is reached.
+    // frameRate is a hint only (`ideal`, not `exact`) so this can't fail if
+    // the device/browser doesn't support it — it just clamps to whatever
+    // the platform actually offers, which is what cameraInfo below reveals.
+    video: {
+      facingMode: 'environment',
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 60 },
+    },
     audio: false,
   })
   video.srcObject = stream
   await video.play()
+
+  const videoTrack = stream.getVideoTracks()[0]
+  const cameraInfo: CameraInfo = {
+    settings: videoTrack.getSettings(),
+    capabilities: videoTrack.getCapabilities ? videoTrack.getCapabilities() : null,
+  }
 
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
@@ -90,6 +112,7 @@ export async function startCameraScanner(
   rafHandle = requestAnimationFrame(tick)
 
   return {
+    cameraInfo,
     stop() {
       stopped = true
       cancelAnimationFrame(rafHandle)

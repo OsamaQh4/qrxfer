@@ -5,7 +5,7 @@ import { BenchmarkRecorder } from '../lib/benchmark/recorder'
 import { headerSize, unpackFrame, type FrameHeader } from '../lib/protocol/frame'
 import { toHex } from '../lib/protocol/hash'
 import { ReceiveSession } from '../lib/protocol/transfer'
-import { startCameraScanner, type ScannerHandle } from '../lib/qr/decode'
+import { startCameraScanner, type CameraInfo, type ScannerHandle } from '../lib/qr/decode'
 import { acquireWakeLock, type WakeLockHandle } from '../lib/util/wakeLock'
 
 export default function ReceivePage() {
@@ -14,6 +14,7 @@ export default function ReceivePage() {
   const [stats, setStats] = useState<LiveStats | null>(null)
   const [result, setResult] = useState<{ bytes: Uint8Array; hashOk: boolean } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const scannerRef = useRef<ScannerHandle | null>(null)
@@ -35,6 +36,7 @@ export default function ReceivePage() {
     setError(null)
     setResult(null)
     setHeader(null)
+    setCameraInfo(null)
     doneRef.current = false
     sessionRef.current = null
     recorderRef.current = null
@@ -49,6 +51,7 @@ export default function ReceivePage() {
       // artificial bottleneck ahead of that real hardware limit.
       const handle = await startCameraScanner(videoRef.current, 60, onFrameBytes)
       scannerRef.current = handle
+      setCameraInfo(handle.cameraInfo)
       // a multi-minute scan with no touch input is exactly when a phone dims/locks,
       // which would silently stall the camera feed mid-transfer
       wakeLockRef.current = await acquireWakeLock()
@@ -160,6 +163,15 @@ export default function ReceivePage() {
         <div className="video-frame">
           <video ref={videoRef} muted playsInline autoPlay />
         </div>
+
+        {cameraInfo && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', margin: '0.5rem 0' }}>
+            Camera: {cameraInfo.settings.width}×{cameraInfo.settings.height} @{' '}
+            {cameraInfo.settings.frameRate?.toFixed(0) ?? '?'} fps
+            {cameraInfo.capabilities?.frameRate &&
+              ` (device reports ${cameraInfo.capabilities.frameRate.min}–${cameraInfo.capabilities.frameRate.max} fps range)`}
+          </div>
+        )}
 
         {header && (
           <div style={{ margin: '1rem 0' }}>
